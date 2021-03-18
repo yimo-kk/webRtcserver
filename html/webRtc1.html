@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>webRtc1</title>
+</head>
+
+<body>
+  <!-- <table>
+    <tr>
+      <td>
+        <label for="txtSelfId">my name:</label>
+        <input type="text" id="txtSelfId" class="w60" />
+        <button id="btnRegister">register</button>
+      </td>
+      <td align="right">
+        <label for="txtTargetId">target name:</label>
+        <input type="text" id="txtTargetId" class="w60" />
+        <label for="txtMsg">message:</label>
+        <input type="text" id="txtMsg" class="w120" />
+        <button id="btnSend">send</button>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2" class="chatMessageBox" id="tdBox">
+      </td>
+    </tr>
+  </table> -->
+  <div>
+    <div class="content">
+
+    </div>
+    自己Id
+    <input type="text" id="txtSelfId">
+    <button id="serve">连接</button>
+    对方Id
+    <input type="text" id="txtTargetId">
+    内容
+    <input type="text" id="txtMsg">
+
+    <button id="button">发送</button>
+  </div>
+</body>
+<!-- <script src="./peer.js"></script>
+ -->
+<!-- <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script> -->
+<!-- <script src="js/chat.js"></script> -->
+<script src="lib/peer.min.js"></script>
+<script src="lib/adapter-latest.js"></script>
+<script>
+  var txtSelfId = document.getElementById("txtSelfId");
+  var txtTargetId = document.getElementById("txtTargetId");
+  var txtMsg = document.getElementById("txtMsg");
+  let button = document.getElementById('button')
+  let serve = document.getElementById('serve')
+  let content = document.getElementsByClassName('content')[0]
+  let peer = null;
+  let conn = null;
+  console.log(txtSelfId, txtTargetId, txtMsg, button, serve, content)
+  //peer连接时，id不允许有中文，所以转换成hashcode数字
+  hashCode = function (str) {
+    var hash = 0;
+    if (str.length == 0) return hash;
+    for (i = 0; i < str.length; i++) {
+      char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return hash;
+  }
+
+  sendMessage = function (message) {
+    conn.send(JSON.stringify(message));
+    txtMsg.value = ''
+    content.innerHTML = content.innerHTML += "<div class='align_left'>" + message.from + " : " + message.body +
+      "</div>";
+  }
+  window.onload = function () {
+    let connOption = {
+      host: 'localhost',
+      port: 9000,
+      path: '/',
+      debug: 3
+    }
+    serve.onclick = function () {
+      if (!peer) {
+        if (txtSelfId.value.length == 0) {
+          alert("please input your name");
+          txtSelfId.focus();
+          return;
+        }
+        //创建peer实例
+        console.log(hashCode(txtSelfId.value), '111')
+        peer = new Peer(hashCode(txtSelfId.value), connOption);
+
+        //register成功的回调
+        peer.on('open', function (id) {
+          content.innerHTML = content.innerHTML += "<div class='align_right'>system : register success " +
+            id + "</div>";
+        });
+
+        peer.on('connection', (conn) => {
+          //收到对方消息的回调
+          conn.on('data', (data) => {
+            var msg = JSON.parse(data);
+            console.log(msg, '收到消息')
+            content.innerHTML = content.innerHTML += "<div class='align_right'>" + msg.from + " : " + msg
+              .body + "</div>";
+            if (txtTargetId.value.length == 0) {
+              txtTargetId.value = msg.from;
+            }
+          });
+        });
+      }
+    }
+
+
+    //点击按钮连接发送消息txtTargetId
+    button.onclick = function () {
+      //消息体
+      var message = {
+        "from": txtSelfId.value,
+        "to": txtTargetId.value,
+        "body": txtMsg.value
+      };
+      if (!conn) {
+        if (txtTargetId.value.length == 0) {
+          alert("please input target name");
+          txtTargetId.focus();
+          return;
+        }
+        if (txtMsg.value.length == 0) {
+          alert("please input message");
+          txtMsg.focus();
+          return;
+        }
+
+        //创建到对方的连接
+        console.log(hashCode(txtTargetId.value), '222')
+        conn = peer.connect(hashCode(txtTargetId.value));
+        conn.on('open', () => {
+          //首次发送消息
+          sendMessage(message);
+        });
+      }
+
+      //发送消息
+      if (conn.open) {
+        sendMessage(message);
+      }
+    }
+  }
+</script>
+<!-- <script>
+  // var txtSelfId = document.querySelector("#txtSelfId");
+  // var txtTargetId = document.querySelector("#txtTargetId");
+  // var txtMsg = document.querySelector("#txtMsg");
+  // var btnRegister = document.querySelector("#serve");
+  // var btnSend = document.querySelector("#button");
+  // let tdBox = document.getElementsByClassName('content')[0]
+  var txtSelfId = document.querySelector("input#txtSelfId");
+  var txtTargetId = document.querySelector("input#txtTargetId");
+  var txtMsg = document.querySelector("input#txtMsg");
+  var tdBox = document.querySelector("td#tdBox");
+  var btnRegister = document.querySelector("button#btnRegister");
+  var btnSend = document.querySelector("button#btnSend");
+  console.log(txtSelfId, txtTargetId, txtMsg, btnRegister, btnSend, tdBox)
+  let peer = null;
+  let conn = null;
+
+  //peer连接时，id不允许有中文，所以转换成hashcode数字
+  hashCode = function (str) {
+    var hash = 0;
+    if (str.length == 0) return hash;
+    for (i = 0; i < str.length; i++) {
+      char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return hash;
+  }
+
+  sendMessage = function (message) {
+    conn.send(JSON.stringify(message));
+    console.log(message);
+    tdBox.innerHTML = tdBox.innerHTML += "<div class='align_left'>" + message.from + " : " + message.body + "</div>";
+  }
+
+  window.onload = function () {
+
+    //peerserver的连接选项(debug:3表示打开调试，将在浏览器的console输出详细日志)
+    let connOption = {
+      host: 'localhost',
+      port: 9000,
+      path: '/',
+      debug: 3
+    };
+
+    //register处理
+    btnRegister.onclick = function () {
+      if (!peer) {
+        if (txtSelfId.value.length == 0) {
+          alert("please input your name");
+          txtSelfId.focus();
+          return;
+        }
+        //创建peer实例 
+        peer = new Peer(hashCode(txtSelfId.value), connOption);
+
+        //register成功的回调
+        peer.on('open', function (id) {
+          tdBox.innerHTML = tdBox.innerHTML += "<div class='align_right'>system : register success " + id +
+            "</div>";
+        });
+
+        peer.on('connection', (conn) => {
+          //收到对方消息的回调
+          conn.on('data', (data) => {
+            var msg = JSON.parse(data);
+            tdBox.innerHTML = tdBox.innerHTML += "<div class='align_right'>" + msg.from + " : " + msg.body +
+              "</div>";
+            if (txtTargetId.value.length == 0) {
+              txtTargetId.value = msg.from;
+            }
+          });
+        });
+      }
+    }
+
+    //发送消息处理
+    btnSend.onclick = function () {
+      //消息体
+      var message = {
+        "from": txtSelfId.value,
+        "to": txtTargetId.value,
+        "body": txtMsg.value
+      };
+      if (!conn) {
+        if (txtTargetId.value.length == 0) {
+          alert("please input target name");
+          txtTargetId.focus();
+          return;
+        }
+        if (txtMsg.value.length == 0) {
+          alert("please input message");
+          txtMsg.focus();
+          return;
+        }
+
+        //创建到对方的连接
+        conn = peer.connect(hashCode(txtTargetId.value));
+        conn.on('open', () => {
+          //首次发送消息
+          sendMessage(message);
+        });
+      }
+
+      //发送消息
+      if (conn.open) {
+        sendMessage(message);
+      }
+    }
+  }
+</script> -->
+
+</html>
